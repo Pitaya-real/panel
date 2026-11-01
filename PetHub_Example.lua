@@ -5,7 +5,7 @@
 -- =================================================================
 
 -- 1. Tải và nạp Library từ GitHub
-local rawUrl = "DÁN_LINK_RAW_VÀO_ĐÂY"
+local rawUrl = "https://raw.githubusercontent.com/Pitaya-real/panel/refs/heads/main/PetUI.lua"
 local PetUI = loadstring(game:HttpGet(rawUrl))()
 
 -- Dịch vụ
