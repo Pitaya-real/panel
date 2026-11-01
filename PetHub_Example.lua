@@ -18,10 +18,10 @@ local Colors = PetUI.Colors
 -- 2. Tạo cửa sổ menu chính
 local Window = PetUI:CreateWindow({
 	Title = "VELTRIX HUB",
-	SubTitle = "Fake An Egg Script",
+	SubTitle = "HELPER FOR YOU!!",
 
-	Logo = "103180182821139",
-	FloatingIcon = "82173902160136",
+	Logo = "81206582590579",
+	FloatingIcon = "129870829580868",
 
 	FloatingSize = 60,
 	FloatingPosition = UDim2.new(0, 36, 0.5, -30),
@@ -35,9 +35,9 @@ local Window = PetUI:CreateWindow({
 
 -- 3. Tạo các Tab
 local Tabs = {
-	Auto = Window:AddTab({ Title = "Auto", Icon = "106941087702129" }),
-	Shop = Window:AddTab({ Title = "Shop", Icon = "139356253887704" }),
-	Info = Window:AddTab({ Title = "Info", Icon = "9405926413" }),
+	Auto = Window:AddTab({ Title = "Auto", Icon = "" }),
+	Shop = Window:AddTab({ Title = "Shop", Icon = "" }),
+	Info = Window:AddTab({ Title = "Info", Icon = "" }),
 }
 
 local Options = PetUI.Options
@@ -85,7 +85,7 @@ end
 Tabs.Auto:AddToggle("AutoHatch", {
 	Title = "Auto Hatch Egg",
 	Description = "Keeps opening eggs for you",
-	Icon = "466334768",
+	Icon = "",
 	Color = Colors.mint,
 	Default = false,
 	Callback = function(on)
@@ -93,16 +93,19 @@ Tabs.Auto:AddToggle("AutoHatch", {
 	end,
 })
 autoLoop("hatch", 0.3, function()
-	-- Ấp lần lượt 12 ô trứng (1 -> 12)
+	-- Mỗi lượt mở hết 12 ô (thay "1" bằng 1 -> 12)
 	for slot = 1, 12 do
-		ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("OpenBlockEvent"):FireServer(tostring(slot))
+		local args = {
+			tostring(slot)
+		}
+		game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("OpenBlockEvent"):FireServer(unpack(args))
 	end
 end)
 
 Tabs.Auto:AddToggle("AutoEquip", {
 	Title = "Auto Equip Best",
 	Description = "Always wear your strongest pets",
-	Icon = "138746192565843",
+	Icon = "",
 	Color = Colors.violet,
 	Default = false,
 	Callback = function(on)
@@ -110,13 +113,13 @@ Tabs.Auto:AddToggle("AutoEquip", {
 	end,
 })
 autoLoop("equip", 3, function()
-	ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("EquipBestEvent"):FireServer()
+	game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("EquipBestEvent"):FireServer()
 end)
 
 Tabs.Auto:AddToggle("AutoRebirth", {
 	Title = "Auto Rebirth",
 	Description = "Rebirths as soon as you can",
-	Icon = "135372808222911",
+	Icon = "",
 	Color = Colors.amber,
 	Default = false,
 	Callback = function(on)
@@ -129,7 +132,7 @@ autoLoop("rebirth", 1, function()
 	if mod and not mod.CanRebirth(LocalPlayer) then
 		return
 	end
-	ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("RebirthEvent"):FireServer()
+	game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("RebirthEvent"):FireServer()
 end)
 
 ---------------------------------------------------------------------
@@ -138,11 +141,14 @@ end)
 Tabs.Shop:AddButton({
 	Title = "Food Shop",
 	Description = "Open the pet food store",
-	Icon = "72482958439949",
+	Icon = "",
 	Color = Colors.violet,
 	ButtonText = "OPEN",
 	Callback = function()
-		ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("FoodEvent"):FireServer("Open")
+		local args = {
+			"Open"
+		}
+		game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("FoodEvent"):FireServer(unpack(args))
 		Window:Notify({ Title = "Food Shop", Content = "Opened", Duration = 1.5 })
 	end,
 })
@@ -150,11 +156,14 @@ Tabs.Shop:AddButton({
 Tabs.Shop:AddButton({
 	Title = "Scanner Shop",
 	Description = "Open the scanner store",
-	Icon = "12611844712",
+	Icon = "",
 	Color = Colors.blue,
 	ButtonText = "OPEN",
 	Callback = function()
-		ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("ScannerEvent"):FireServer("Open")
+		local args = {
+			"Open"
+		}
+		game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("ScannerEvent"):FireServer(unpack(args))
 		Window:Notify({ Title = "Scanner Shop", Content = "Opened", Duration = 1.5 })
 	end,
 })
@@ -162,11 +171,14 @@ Tabs.Shop:AddButton({
 Tabs.Shop:AddButton({
 	Title = "Sell All Pets",
 	Description = "Sell your whole pet inventory",
-	Icon = "118071449839378",
+	Icon = "",
 	Color = Colors.amber,
 	ButtonText = "SELL",
 	Callback = function()
-		ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("SellAllEvent"):FireServer("Pets")
+		local args = {
+			"Pets"
+		}
+		game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("SellAllEvent"):FireServer(unpack(args))
 		Window:Notify({ Title = "Sell All Pets", Content = "Sent", Duration = 1.5 })
 	end,
 })
