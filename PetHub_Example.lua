@@ -17,11 +17,11 @@ local Colors = PetUI.Colors
 
 -- 2. Tạo cửa sổ menu chính
 local Window = PetUI:CreateWindow({
-	Title = "PET HUB",
-	SubTitle = "Rebirth Helper",
+	Title = "VELTRIX HUB",
+	SubTitle = "Fake An Egg Script",
 
-	Logo = "",
-	FloatingIcon = "",
+	Logo = "103180182821139",
+	FloatingIcon = "82173902160136",
 
 	FloatingSize = 60,
 	FloatingPosition = UDim2.new(0, 36, 0.5, -30),
