@@ -111,6 +111,14 @@ local function isAsset(v)
 	return false
 end
 
+-- ID ảnh -> "rbxassetid://..."
+local function toAsset(v)
+	if tonumber(v) then
+		return "rbxassetid://" .. v
+	end
+	return tostring(v or "")
+end
+
 -- Icon: emoji / chữ (vd "🥚") hoặc ID ảnh (vd "73866843639743")
 local function makeIcon(parent, icon, textSize)
 	if isAsset(icon) then
@@ -168,7 +176,6 @@ function PetUI:CreateWindow(config)
 	self.ActiveTab = nil
 	self.ToggleKey = config.ToggleKey or Enum.KeyCode.RightControl
 	self.Accent = config.Accent or C.mint
-	self.OpenColor = config.FloatingOpenColor or C.violet
 
 	-- Parent: gethui -> CoreGui -> PlayerGui
 	local parent = config.Parent
@@ -235,19 +242,15 @@ function PetUI:CreateWindow(config)
 	-- Tiêu đề
 	-----------------------------------------------------------------
 
-	local logo = create("Frame", {
+	create("ImageLabel", {
+		Name = "Logo",
 		Position = UDim2.fromOffset(16, 18),
 		Size = UDim2.fromOffset(40, 40),
-		BackgroundColor3 = C.violet,
+		BackgroundTransparency = 1,
+		Image = toAsset(config.Logo),
+		ScaleType = Enum.ScaleType.Fit,
 		Parent = panel,
 	})
-	corner(logo, 13)
-	create("UIGradient", {
-		Color = ColorSequence.new(Color3.fromRGB(155, 140, 255), Color3.fromRGB(91, 140, 255)),
-		Rotation = 45,
-		Parent = logo,
-	})
-	makeIcon(logo, config.Logo or "🥚", 22)
 
 	label(panel, {
 		Position = UDim2.fromOffset(66, 16),
@@ -443,39 +446,16 @@ function Window:_buildFloating(config)
 		TweenService:Create(ringStroke, info, { Transparency = 1 }):Play()
 	end
 
-	local fab = create("TextButton", {
+	local fab = create("ImageButton", {
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = self.Accent,
-		Text = "",
+		BackgroundTransparency = 1,
+		Image = toAsset(config.FloatingIcon),
+		ScaleType = Enum.ScaleType.Fit,
 		AutoButtonColor = false,
 		Parent = holder,
 	})
-	corner(fab, size)
-	stroke(fab, C.white, 2, 0.7)
 	self._fab = fab
 	self._fabScale = create("UIScale", { Scale = 1, Parent = fab })
-
-	local iconA = create("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		Parent = fab,
-	})
-	local iconImg = makeIcon(iconA, config.FloatingIcon or "🥚", math.floor(size * 0.5))
-	if iconImg:IsA("ImageLabel") then
-		corner(iconImg, size)
-	else
-		iconImg.TextColor3 = C.dark
-	end
-	self._fabIconA = iconA
-	self._fabIconB = label(fab, {
-		Size = UDim2.fromScale(1, 1),
-		Text = "✕",
-		Font = Enum.Font.GothamBlack,
-		TextSize = math.floor(size * 0.42),
-		TextXAlignment = Enum.TextXAlignment.Center,
-		TextColor3 = C.white,
-		Visible = false,
-	})
 
 	-- Lơ lửng lên xuống
 	if config.FloatingBobbing ~= false then
@@ -604,13 +584,8 @@ function Window:_fabState(open)
 	if self._ring then
 		self._ring.Visible = not open
 	end
-	self._fabIconA.Visible = not open
-	self._fabIconB.Visible = open
 	self._fab.Rotation = open and -90 or 90
-	tween(self._fab, 0.5, {
-		Rotation = 0,
-		BackgroundColor3 = open and self.OpenColor or self.Accent,
-	}, Enum.EasingStyle.Back)
+	tween(self._fab, 0.5, { Rotation = 0 }, Enum.EasingStyle.Back)
 end
 
 function Window:SetToggleKey(key)
