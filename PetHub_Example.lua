@@ -35,9 +35,9 @@ local Window = PetUI:CreateWindow({
 
 -- 3. Tạo các Tab
 local Tabs = {
-	Auto = Window:AddTab({ Title = "Auto", Icon = "" }),
-	Shop = Window:AddTab({ Title = "Shop", Icon = "" }),
-	Info = Window:AddTab({ Title = "Info", Icon = "" }),
+	Auto = Window:AddTab({ Title = "Auto", Icon = "106941087702129" }),
+	Shop = Window:AddTab({ Title = "Shop", Icon = "139356253887704" }),
+	Info = Window:AddTab({ Title = "Info", Icon = "9405926413" }),
 }
 
 local Options = PetUI.Options
@@ -85,7 +85,7 @@ end
 Tabs.Auto:AddToggle("AutoHatch", {
 	Title = "Auto Hatch Egg",
 	Description = "Keeps opening eggs for you",
-	Icon = "",
+	Icon = "466334768",
 	Color = Colors.mint,
 	Default = false,
 	Callback = function(on)
@@ -102,7 +102,7 @@ end)
 Tabs.Auto:AddToggle("AutoEquip", {
 	Title = "Auto Equip Best",
 	Description = "Always wear your strongest pets",
-	Icon = "",
+	Icon = "138746192565843",
 	Color = Colors.violet,
 	Default = false,
 	Callback = function(on)
@@ -116,7 +116,7 @@ end)
 Tabs.Auto:AddToggle("AutoRebirth", {
 	Title = "Auto Rebirth",
 	Description = "Rebirths as soon as you can",
-	Icon = "",
+	Icon = "135372808222911",
 	Color = Colors.amber,
 	Default = false,
 	Callback = function(on)
@@ -138,7 +138,7 @@ end)
 Tabs.Shop:AddButton({
 	Title = "Food Shop",
 	Description = "Open the pet food store",
-	Icon = "",
+	Icon = "72482958439949",
 	Color = Colors.violet,
 	ButtonText = "OPEN",
 	Callback = function()
@@ -150,7 +150,7 @@ Tabs.Shop:AddButton({
 Tabs.Shop:AddButton({
 	Title = "Scanner Shop",
 	Description = "Open the scanner store",
-	Icon = "",
+	Icon = "12611844712",
 	Color = Colors.blue,
 	ButtonText = "OPEN",
 	Callback = function()
@@ -162,7 +162,7 @@ Tabs.Shop:AddButton({
 Tabs.Shop:AddButton({
 	Title = "Sell All Pets",
 	Description = "Sell your whole pet inventory",
-	Icon = "",
+	Icon = "118071449839378",
 	Color = Colors.amber,
 	ButtonText = "SELL",
 	Callback = function()
