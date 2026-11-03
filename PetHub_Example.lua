@@ -5,7 +5,7 @@
 -- =================================================================
 
 -- 1. Tải và nạp Library từ GitHub
-local rawUrl = "https://raw.githubusercontent.com/Pitaya-real/panel/refs/heads/main/PetUI.lua"
+local rawUrl = "DÁN_LINK_RAW_VÀO_ĐÂY"
 local PetUI = loadstring(game:HttpGet(rawUrl))()
 
 -- Dịch vụ
@@ -17,14 +17,14 @@ local Colors = PetUI.Colors
 
 -- 2. Tạo cửa sổ menu chính
 local Window = PetUI:CreateWindow({
-	Title = "VELTRIX HUB",
-	SubTitle = "HELPER FOR YOU!!",
+	Title = "PET HUB",
+	SubTitle = "Rebirth Helper",
 
-	Logo = "81206582590579",
-	FloatingIcon = "129870829580868",
+	Logo = "",
+	FloatingIcon = "",
 
-	FloatingSize = 60,
-	FloatingPosition = UDim2.new(0, 36, 0.5, -30),
+	FloatingSize = 90,
+	FloatingPosition = UDim2.new(0, 36, 0.5, -45),
 	FloatingPulse = true,
 	FloatingBobbing = true,
 
@@ -79,6 +79,73 @@ local function getRebirth()
 	return RebirthMod
 end
 
+-- Lấy module của game trong ReplicatedStorage (Pen, Remotes, Format, Animals...)
+local moduleCache = {}
+
+local function getModule(name)
+	if moduleCache[name] then
+		return moduleCache[name]
+	end
+	local ok, mod = pcall(function()
+		local m = ReplicatedStorage:FindFirstChild(name)
+		return m and require(m)
+	end)
+	if ok and mod then
+		moduleCache[name] = mod
+	end
+	return moduleCache[name]
+end
+
+-- Số tiền theo kiểu của game (dự phòng: PetUI.Format)
+local function formatCash(n)
+	local f = getModule("Format")
+	if f and f.cash then
+		local ok, r = pcall(f.cash, n)
+		if ok and type(r) == "string" then
+			return r
+		end
+	end
+	return PetUI.Format(n)
+end
+
+-- Tên con thú theo kiểu của game
+local function animalName(name)
+	local a = getModule("Animals")
+	if a and a.displayName then
+		local ok, r = pcall(a.displayName, name)
+		if ok and type(r) == "string" then
+			return r
+		end
+	end
+	return tostring(name)
+end
+
+-- Base của mình: game lưu số base trong attribute "Base" của người chơi
+-- (dự phòng: base nào có attribute "Owner" trùng tên mình)
+local MyBase
+
+local function findMyBase()
+	local bases = workspace:FindFirstChild("Bases")
+	if not bases then
+		return nil
+	end
+
+	local id = LocalPlayer:GetAttribute("Base")
+	if id then
+		local base = bases:FindFirstChild(tostring(id))
+		if base then
+			return base
+		end
+	end
+
+	for _, base in ipairs(bases:GetChildren()) do
+		if base:GetAttribute("Owner") == LocalPlayer.Name then
+			return base
+		end
+	end
+	return nil
+end
+
 ---------------------------------------------------------------------
 -- Tab Auto
 ---------------------------------------------------------------------
@@ -92,13 +159,32 @@ Tabs.Auto:AddToggle("AutoHatch", {
 		running.hatch = on
 	end,
 })
-autoLoop("hatch", 0.3, function()
-	-- Mỗi lượt mở hết 12 ô (thay "1" bằng 1 -> 12)
-	for slot = 1, 12 do
-		local args = {
-			tostring(slot)
-		}
-		game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("OpenBlockEvent"):FireServer(unpack(args))
+-- Trứng chín khi thời gian server >= HatchAt của nest trong LocalPlayer.Nests
+local lastHatch = {}
+
+autoLoop("hatch", 0.5, function()
+	local nests = LocalPlayer:FindFirstChild("Nests")
+	if not nests then
+		return
+	end
+
+	local now = workspace:GetServerTimeNow()
+	for _, nest in ipairs(nests:GetChildren()) do
+		local hatchAt = nest:GetAttribute("HatchAt")
+		local ready = nest:GetAttribute("Owned") == true
+			and nest:GetAttribute("Egg")
+			and hatchAt
+			and now >= hatchAt
+
+		-- Chỉ mở nest có trứng đã chín, mỗi nest cách nhau 1.5 giây
+		if ready and (not lastHatch[nest.Name] or os.clock() - lastHatch[nest.Name] > 1.5) then
+			lastHatch[nest.Name] = os.clock()
+
+			local args = {
+				nest.Name
+			}
+			game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("OpenBlockEvent"):FireServer(unpack(args))
+		end
 	end
 end)
 
@@ -135,9 +221,87 @@ autoLoop("rebirth", 1, function()
 	game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("RebirthEvent"):FireServer()
 end)
 
+Tabs.Auto:AddToggle("AutoUpgrade", {
+	Title = "Auto Upgrade Base",
+	Description = "Upgrades your pen when you have enough cash",
+	Icon = "",
+	Color = Colors.blue,
+	Default = false,
+	Callback = function(on)
+		running.upgrade = on
+	end,
+})
+autoLoop("upgrade", 1, function()
+	local pen = getModule("Pen")
+	local remotes = getModule("Remotes")
+	if not (pen and remotes) then
+		return
+	end
+
+	local cost = pen.getCost(LocalPlayer:GetAttribute("PenUpgrades") or 0)
+
+	-- Hết cấp để nâng thì tự tắt
+	if not cost then
+		Options.AutoUpgrade:SetValue(false)
+		Window:Notify({ Title = "Auto Upgrade", Content = "Base is maxed", Duration = 2 })
+		return
+	end
+
+	local ls = LocalPlayer:FindFirstChild("leaderstats")
+	local cv = ls and ls:FindFirstChild("Cash")
+	if cv and cv.Value >= cost then
+		remotes.BaseUpgradeEvent:FireServer()
+	end
+end)
+
 ---------------------------------------------------------------------
 -- Tab Shop
 ---------------------------------------------------------------------
+-- Gắn hitbox vào người để game tự mở shop.
+-- Hitbox bám theo người suốt lúc frame mở, frame tắt thì trả về chỗ cũ.
+local function holdHitbox(hitbox, frame, root)
+	-- Đang giữ rồi thì không làm lại
+	if hitbox:GetAttribute("PetHubHeld") then
+		return
+	end
+	hitbox:SetAttribute("PetHubHeld", true)
+
+	local oldCFrame = hitbox.CFrame
+
+	local follow = game:GetService("RunService").Heartbeat:Connect(function()
+		if root.Parent then
+			hitbox.CFrame = root.CFrame
+		end
+	end)
+
+	local function giveBack()
+		follow:Disconnect()
+		hitbox.CFrame = oldCFrame
+		hitbox:SetAttribute("PetHubHeld", nil)
+	end
+
+	task.spawn(function()
+		-- Chờ shop mở (tối đa 2 giây), không mở được thì trả hitbox về luôn
+		local t = 0
+		while not frame.Visible and t < 2 do
+			t += task.wait(0.1)
+		end
+		if not frame.Visible then
+			giveBack()
+			return
+		end
+
+		-- Shop tắt (nút X hoặc đi ra) thì trả hitbox về chỗ cũ
+		local conn
+		conn = frame:GetPropertyChangedSignal("Visible"):Connect(function()
+			if not frame.Visible then
+				conn:Disconnect()
+				giveBack()
+			end
+		end)
+	end)
+end
+
 Tabs.Shop:AddButton({
 	Title = "Food Shop",
 	Description = "Open the pet food store",
@@ -145,10 +309,24 @@ Tabs.Shop:AddButton({
 	Color = Colors.violet,
 	ButtonText = "OPEN",
 	Callback = function()
-		local args = {
-			"Open"
-		}
-		game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("FoodEvent"):FireServer(unpack(args))
+		local character = LocalPlayer.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local hitbox = workspace:FindFirstChild("Map")
+			and workspace.Map:FindFirstChild("Food")
+			and workspace.Map.Food:FindFirstChild("Hitbox")
+		local mainGui = LocalPlayer.PlayerGui:FindFirstChild("MainGui")
+		local frame = mainGui and mainGui:FindFirstChild("FoodFrame")
+
+		-- Không tìm thấy hitbox / frame thì gọi thẳng remote mở shop
+		if not (root and hitbox and frame) then
+			local args = {
+				"Open"
+			}
+			game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("FoodEvent"):FireServer(unpack(args))
+		else
+			holdHitbox(hitbox, frame, root)
+		end
+
 		Window:Notify({ Title = "Food Shop", Content = "Opened", Duration = 1.5 })
 	end,
 })
@@ -160,10 +338,24 @@ Tabs.Shop:AddButton({
 	Color = Colors.blue,
 	ButtonText = "OPEN",
 	Callback = function()
-		local args = {
-			"Open"
-		}
-		game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("ScannerEvent"):FireServer(unpack(args))
+		local character = LocalPlayer.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local hitbox = workspace:FindFirstChild("Map")
+			and workspace.Map:FindFirstChild("Scanners")
+			and workspace.Map.Scanners:FindFirstChild("Hitbox")
+		local mainGui = LocalPlayer.PlayerGui:FindFirstChild("MainGui")
+		local frame = mainGui and mainGui:FindFirstChild("ScannersFrame")
+
+		-- Không tìm thấy hitbox / frame thì gọi thẳng remote mở shop
+		if not (root and hitbox and frame) then
+			local args = {
+				"Open"
+			}
+			game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("ScannerEvent"):FireServer(unpack(args))
+		else
+			holdHitbox(hitbox, frame, root)
+		end
+
 		Window:Notify({ Title = "Scanner Shop", Content = "Opened", Duration = 1.5 })
 	end,
 })
@@ -194,6 +386,11 @@ local Stats = Tabs.Info:AddStats({
 	{ Id = "Boost", Title = "Cash Boost", Color = Color3.fromRGB(183, 171, 255) },
 })
 
+local PenStats = Tabs.Info:AddStats({
+	{ Id = "Slots", Title = "Max Slots", Color = Colors.mint },
+	{ Id = "Upgrade", Title = "Next Upgrade", Color = Colors.amber },
+})
+
 local Goal = Tabs.Info:AddGoalCard({
 	Title = "Next Rebirth",
 	Icon = "",
@@ -205,8 +402,10 @@ local function times(x)
 	return x and (tostring(math.floor(x * 100 + 0.5) / 100) .. "x") or "—"
 end
 
+local lastIcon
+
 local function refreshInfo()
-	local fmt = PetUI.Format
+	local fmt = formatCash
 	local ls = LocalPlayer:FindFirstChild("leaderstats")
 	local rbv = ls and ls:FindFirstChild("Rebirths")
 	local cv = ls and ls:FindFirstChild("Cash")
@@ -230,13 +429,38 @@ local function refreshInfo()
 	Stats:Set("Speed", times(speed))
 	Stats:Set("Boost", times(boost))
 
+	local pen = getModule("Pen")
+	if pen then
+		local up = LocalPlayer:GetAttribute("PenUpgrades") or 0
+		local okSlots, slots = pcall(pen.getMaxSlots, up)
+		local okCost, cost = pcall(pen.getCost, up)
+		PenStats:Set("Slots", okSlots and slots or "—")
+		PenStats:Set("Upgrade", okCost and (cost and fmt(cost) or "MAX") or "—")
+	end
+
 	if nxt then
-		local eggName = nxt.animal .. " Egg"
+		local eggKey = nxt.animal
 		local ok, egg = pcall(function()
 			return mod.eggFor(nxt.animal)
 		end)
-		if ok and type(egg) == "table" and type(egg.name or egg.Name) == "string" then
-			eggName = egg.name or egg.Name
+		if ok and type(egg) == "table" then
+			eggKey = egg.displayName or egg.name or eggKey
+		end
+		local eggName = animalName(eggKey) .. " Egg"
+
+		-- Icon trứng / thú: dùng chính hàm vẽ icon của game
+		local viewport = getModule("ViewportIcons")
+		local hasEgg = ok and type(egg) == "table" and egg.name
+		local iconKey = hasEgg and ("Egg:" .. egg.name) or ("Animal:" .. nxt.animal)
+		if viewport and iconKey ~= lastIcon then
+			lastIcon = iconKey
+			pcall(function()
+				if hasEgg then
+					viewport.apply(Goal.IconLabel, "Egg", egg.name)
+				else
+					viewport.apply(Goal.IconLabel, "Animal", nxt.animal)
+				end
+			end)
 		end
 
 		local msg
@@ -249,7 +473,7 @@ local function refreshInfo()
 		end
 
 		Goal:Update({
-			Name = "#" .. nxt.level .. " " .. nxt.animal,
+			Name = "#" .. nxt.level .. " " .. animalName(nxt.animal),
 			Item = eggName,
 			ItemOk = hatched and true or false,
 			ItemOkText = "Hatched",
