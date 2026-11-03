@@ -295,19 +295,39 @@ function PetUI:CreateWindow(config)
 		Size = UDim2.fromOffset(34, 34),
 		BackgroundColor3 = C.white,
 		BackgroundTransparency = 0.9,
-		Text = "✕",
-		TextSize = 15,
-		Font = Enum.Font.GothamBlack,
-		TextColor3 = C.ink,
+		Text = "",
 		AutoButtonColor = false,
 		Parent = panel,
 	})
 	corner(closeBtn, 17)
+
+	-- Dấu X vẽ bằng 2 thanh xoay (không bị lỗi font)
+	local xBars = {}
+	for _, rot in ipairs({ 45, -45 }) do
+		local bar = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(16, 3),
+			Rotation = rot,
+			BorderSizePixel = 0,
+			BackgroundColor3 = C.ink,
+			Parent = closeBtn,
+		})
+		corner(bar, 2)
+		table.insert(xBars, bar)
+	end
+
 	closeBtn.MouseEnter:Connect(function()
-		tween(closeBtn, 0.2, { BackgroundColor3 = C.rose, BackgroundTransparency = 0, TextColor3 = C.dark })
+		tween(closeBtn, 0.2, { BackgroundColor3 = C.rose, BackgroundTransparency = 0 })
+		for _, bar in ipairs(xBars) do
+			tween(bar, 0.2, { BackgroundColor3 = C.dark })
+		end
 	end)
 	closeBtn.MouseLeave:Connect(function()
-		tween(closeBtn, 0.2, { BackgroundColor3 = C.white, BackgroundTransparency = 0.9, TextColor3 = C.ink })
+		tween(closeBtn, 0.2, { BackgroundColor3 = C.white, BackgroundTransparency = 0.9 })
+		for _, bar in ipairs(xBars) do
+			tween(bar, 0.2, { BackgroundColor3 = C.ink })
+		end
 	end)
 	closeBtn.MouseButton1Click:Connect(function()
 		self:Close()
@@ -418,7 +438,7 @@ end
 ---------------------------------------------------------------------
 
 function Window:_buildFloating(config)
-	local size = config.FloatingSize or 60
+	local size = config.FloatingSize or 90
 
 	local holder = create("Frame", {
 		Name = "Floating",
@@ -442,7 +462,7 @@ function Window:_buildFloating(config)
 		corner(self._ring, size)
 		local ringStroke = stroke(self._ring, self.Accent, 2, 0.2)
 		local info = TweenInfo.new(2.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, -1)
-		TweenService:Create(self._ring, info, { Size = UDim2.fromScale(1.6, 1.6) }):Play()
+		TweenService:Create(self._ring, info, { Size = UDim2.fromScale(1.35, 1.35) }):Play()
 		TweenService:Create(ringStroke, info, { Transparency = 1 }):Play()
 	end
 
@@ -466,36 +486,60 @@ function Window:_buildFloating(config)
 		):Play()
 	end
 
-	-- Kéo thả / bấm để mở
-	local dragging, moved, dragStart, startPos = false, false, nil, nil
+	-- Kéo thả / bấm để mở (PC + mobile)
+	local dragging, moved = false, false
+	local dragInput, dragStart, startPos
+
+	local function isPress(input)
+		return input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+	end
 
 	fab.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		if isPress(input) and not dragging then
 			dragging, moved = true, false
-			dragStart, startPos = input.Position, holder.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-					if not moved then
-						self:Toggle()
-					end
-				end
-			end)
+			dragInput = input
+			dragStart = Vector2.new(input.Position.X, input.Position.Y)
+			startPos = holder.Position
 		end
 	end)
 
 	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			local delta = input.Position - dragStart
-			if delta.Magnitude > 6 then
-				moved = true
-			end
-			if moved then
-				holder.Position = UDim2.new(
-					startPos.X.Scale, startPos.X.Offset + delta.X,
-					startPos.Y.Scale, startPos.Y.Offset + delta.Y
-				)
-			end
+		if not dragging then
+			return
+		end
+		local isMove = input.UserInputType == Enum.UserInputType.MouseMovement
+			or (input.UserInputType == Enum.UserInputType.Touch and input == dragInput)
+		if not isMove then
+			return
+		end
+
+		local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStart
+		if delta.Magnitude > 8 then
+			moved = true
+		end
+		if moved then
+			holder.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if not dragging then
+			return
+		end
+		local isEnd = input.UserInputType == Enum.UserInputType.MouseButton1
+			or (input.UserInputType == Enum.UserInputType.Touch and input == dragInput)
+		if not isEnd then
+			return
+		end
+
+		dragging = false
+		dragInput = nil
+		if not moved then
+			self:Toggle()
 		end
 	end)
 
