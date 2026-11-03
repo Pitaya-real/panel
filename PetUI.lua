@@ -1255,7 +1255,13 @@ function Tab:AddGoalCard(opts)
 		Parent = rc,
 	})
 	corner(ico, 12)
-	makeIcon(ico, opts.Icon or "🥚", 18)
+	local iconImage = create("ImageLabel", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Image = toAsset(opts.Icon),
+		ScaleType = Enum.ScaleType.Fit,
+		Parent = ico,
+	})
 
 	label(rc, {
 		Position = UDim2.fromOffset(60, 40),
@@ -1345,6 +1351,8 @@ function Tab:AddGoalCard(opts)
 	})
 
 	local obj = {}
+	obj.IconLabel = iconImage
+
 	function obj:Update(d)
 		nameLbl.Text = d.Name or "—"
 		itemLbl.Text = d.Item or "—"
